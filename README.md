@@ -45,14 +45,33 @@ Renovate läuft selbst gehostet über GitHub Actions. Es startet bei jedem Push 
    „Allow GitHub Actions to create and approve pull requests“ aktivieren. Danach *Save* klicken.
 4. **Issues aktivieren** (für das *Dependency Dashboard*):
    *Settings → General → Features → Issues* anhaken. In Forks ist das standardmäßig aus.
-5. **Token wählen.** Eine der beiden Varianten genügt:
+5. **Eigenes Token für Renovate hinterlegen (optional, aber empfohlen).**
 
-   | Variante | Einrichtung | Verhalten |
-   |---|---|---|
-   | **A: `GITHUB_TOKEN`** (Standard, nichts zu tun) | – | Funktioniert sofort. CI-Läufe auf Renovate-PRs muss ein Mensch aber per „Approve and run workflows“ freigeben. |
-   | **B: Personal Access Token (empfohlen)** | Token (classic) mit Scope `repo` bzw. `public_repo` erzeugen und im Fork unter *Settings → Secrets and variables → Actions* als `RENOVATE_TOKEN` speichern | CI startet auf Renovate-PRs automatisch. PRs und Commits erscheinen unter deinem Benutzer. |
+   Renovate braucht ein Token, um Branches zu pushen und PRs anzulegen. Der Workflow nimmt das Secret `RENOVATE_TOKEN`, wenn es existiert.
+   Sonst verwendet er das `GITHUB_TOKEN`, das GitHub Actions automatisch bereitstellt. **Ohne eigenes Token funktioniert das Training also auch.**
 
-   Der Workflow nimmt automatisch `RENOVATE_TOKEN`, falls vorhanden, sonst `GITHUB_TOKEN`.
+   Das `GITHUB_TOKEN` hat aber eine Einschränkung, die gerade beim Automerge stört.
+   GitHub startet für Änderungen, die mit diesem Token gemacht wurden, keine weiteren Workflows automatisch (Schutz vor Endlosschleifen). Das hat zwei Folgen:
+
+   - Die CI auf jedem Renovate-PR musst du per „Approve and run workflows“ von Hand freigeben.
+   - Merged Renovate einen PR, startet danach kein neuer Renovate-Lauf. Den musst du per *Run workflow* selbst anstoßen.
+
+   Mit einem eigenen Token läuft beides automatisch. So legst du es an:
+
+   1. [Neues Token (classic) erstellen](https://github.com/settings/tokens/new).
+   2. *Note:* `renovate-training`. *Expiration:* auf das Trainingsende setzen, z. B. 7 Tage.
+   3. *Scope:* nur `public_repo` anhaken. Ist dein Fork privat, stattdessen `repo`.
+   4. *Generate token* klicken und das Token kopieren. Es wird nur einmal angezeigt.
+   5. Im Fork unter *Settings → Secrets and variables → Actions → New repository secret* ein Secret mit Namen
+      `RENOVATE_TOKEN` anlegen und das Token als Wert einfügen.
+
+   Gut zu wissen:
+
+   - Renovate handelt dann mit deinem Benutzerkonto. PRs und Commits erscheinen unter deinem Namen.
+   - Ein Token (classic) mit `public_repo` gilt für **alle** deine öffentlichen Repositories. Lösche es deshalb nach dem Training wieder.
+   - Ein fein-granulares Token (*fine-grained*), das nur auf den Fork beschränkt ist, wäre sparsamer.
+     Laut der Dokumentation der Renovate-Action fehlen solchen Tokens aber teilweise noch Rechte, unter anderem beim Lesen von Checks.
+     Das kann ausgerechnet den Automerge verhindern. Für das Training ist das klassische Token deshalb die verlässlichere Wahl.
 
 6. **Ersten Lauf starten.** Entweder eine beliebige Änderung auf `main` pushen
    (z. B. diese README anpassen) oder unter *Actions → Renovate → Run workflow* manuell starten.
@@ -152,8 +171,8 @@ Den Check `build` liefert `.github/workflows/ci.yml`.
 1. Neue Konfiguration auf `main` pushen. Renovate läuft und markiert den Temurin-Patch-PR als Automerge-Kandidaten.
    In der PR-Beschreibung steht dann „Automerge: Enabled“.
 2. CI auf dem PR abwarten:
-   - **Variante A (`GITHUB_TOKEN`):** Im PR bzw. unter *Actions* „Approve and run workflows“ klicken.
-   - **Variante B (`RENOVATE_TOKEN`):** CI startet automatisch.
+   - **Ohne eigenes Token (`GITHUB_TOKEN`):** Im PR bzw. unter *Actions* „Approve and run workflows“ klicken.
+   - **Mit `RENOVATE_TOKEN`:** CI startet automatisch.
 3. Merge:
    - Ist im Fork *Settings → General → Pull Requests → „Allow auto-merge“* aktiv **und** verlangt eine Branch-Ruleset für `main`
      den Status-Check `build`, aktiviert Renovate GitHubs natives Auto-Merge. GitHub merged dann selbst, sobald `build` grün ist.
@@ -209,9 +228,9 @@ Um sie zu übernehmen, die Datei nach `renovate.json` kopieren und auf `main` pu
 | Symptom | Ursache / Lösung |
 |---|---|
 | Workflow startet im Fork nicht | Actions im Fork aktivieren (Teil 0, Schritt 2) |
-| `Resource not accessible by integration` beim Anlegen von PRs | „Allow GitHub Actions to create and approve pull requests“ aktivieren (Teil 0, Schritt 3) |
+| Renovate-Branches existieren, aber es gibt **keine PRs**. Im Dependency Dashboard stehen alle Updates unter „Errored“. | Renovate nutzt das `GITHUB_TOKEN`, und Actions dürfen keine PRs anlegen. „Allow GitHub Actions to create and approve pull requests“ aktivieren (Teil 0, Schritt 3) oder ein eigenes Token hinterlegen (Teil 0, Schritt 5). Danach *Run workflow* starten: Renovate legt die PRs für die vorhandenen Branches an. Im Job-Log (Log-Level `debug`) steht die genaue Ursache bei `Pull request creation error`. |
 | Kein Dependency Dashboard | Issues im Fork aktivieren (Teil 0, Schritt 4) |
-| Automerge passiert nicht | CI auf dem PR nicht gelaufen (Variante A: freigeben), CI rot, oder es gab danach keinen weiteren Renovate-Lauf bzw. „Allow auto-merge“ fehlt |
+| Automerge passiert nicht | CI auf dem PR nicht gelaufen (ohne eigenes Token: per „Approve and run workflows“ freigeben), CI rot, oder es gab danach keinen weiteren Renovate-Lauf bzw. „Allow auto-merge“ fehlt |
 | Warnung `gradleWrapper is not permitted in the allowedUnsafeExecutions` im Dependency Dashboard | In `renovate.yml` fehlt `RENOVATE_ALLOWED_UNSAFE_EXECUTIONS: '["gradleWrapper"]'`. Ohne diese Variable hat der Wrapper-PR eine falsche Prüfsumme (siehe Teil 4, Aufgabe 4). |
 | PR wird nicht aktualisiert, obwohl `main` sich geändert hat | Renovate rebased erst beim nächsten Lauf. *Run workflow* starten oder im PR die Checkbox „rebase/retry“ setzen und erneut laufen lassen |
 
