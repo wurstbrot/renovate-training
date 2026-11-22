@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------------
 # Build-Stage: kompiliert die Anwendung mit Maven
 # ---------------------------------------------------------------------------
-FROM maven:3.9.4-eclipse-temurin-17 AS build
+FROM maven:3.10.0-eclipse-temurin-17 AS build
 WORKDIR /src
 COPY pom.xml .
 RUN mvn -B -q dependency:go-offline
