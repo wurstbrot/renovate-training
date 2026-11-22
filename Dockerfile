@@ -13,7 +13,7 @@ RUN mvn -B -q package
 # Ziel des Trainings: Minor-/Patch-Updates dieses Images automatisch mergen,
 # Major-Updates (z. B. 17 -> 25) aber weiterhin manuell prüfen.
 # ---------------------------------------------------------------------------
-FROM eclipse-temurin:17.0.8_7-jre-jammy
+FROM eclipse-temurin:17.0.21.1_2-jre-jammy
 WORKDIR /app
 COPY --from=build /src/target/renovate-training.jar app.jar
 USER 10001
