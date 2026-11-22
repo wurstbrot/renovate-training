@@ -1,0 +1,57 @@
+// Musterlösung: nach den Übungen in Teil 2 und 3 ansehen.
+// Zum Übernehmen nach ./renovate.json5 kopieren und auf main pushen.
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: ['config:recommended'],
+
+  // Nur diese Paket-Manager auswerten (u. a. keine GitHub-Actions-Updates)
+  enabledManagers: ['maven', 'dockerfile', 'gradle', 'gradle-wrapper'],
+
+  labels: ['dependencies'],
+
+  // Im Training alle PRs sofort anlegen, ohne Limits
+  prHourlyLimit: 0,
+  prConcurrentLimit: 0,
+
+  // Teil 2: Schwachstellen über die Datenbank OSV.dev erkennen (z. B. Log4Shell)
+  osvVulnerabilityAlerts: true,
+  vulnerabilityAlerts: {
+    labels: ['security'],
+    // Neueste statt niedrigste Version mit Fix: log4j-api und log4j-core teilen sich
+    // die Property log4j.version, haben laut OSV aber unterschiedliche Mindestversionen.
+    vulnerabilityFixStrategy: 'highest',
+  },
+
+  packageRules: [
+    {
+      // Maven-Updates kennzeichnen
+      matchManagers: ['maven'],
+      addLabels: ['maven'],
+    },
+    {
+      // Docker-Updates kennzeichnen
+      matchManagers: ['dockerfile'],
+      addLabels: ['docker'],
+    },
+    {
+      // Android-Updates (Gradle) kennzeichnen
+      matchManagers: ['gradle', 'gradle-wrapper'],
+      addLabels: ['android'],
+    },
+    {
+      // Teil 3: Java-Basis-Image – Minor-, Patch- und Digest-Updates sofort automatisch
+      // mergen, ohne auf Tests zu warten
+      matchDatasources: ['docker'],
+      matchDepNames: ['eclipse-temurin'],
+      matchUpdateTypes: ['minor', 'patch', 'digest', 'pin', 'pinDigest'],
+      automerge: true,
+      ignoreTests: true,
+      addLabels: ['automerge'],
+    },
+    {
+      // Sicherheitsnetz: Major-Updates werden nie automatisch gemerged
+      matchUpdateTypes: ['major'],
+      automerge: false,
+    },
+  ],
+}

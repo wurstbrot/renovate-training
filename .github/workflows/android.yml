@@ -1,7 +1,6 @@
 name: Android
 
 # Baut die Android-App nur, wenn sich etwas im Ordner android/ ändert.
-# Dadurch blockiert dieser Check keine PRs, die nur Docker oder Maven betreffen.
 on:
   pull_request:
     paths:

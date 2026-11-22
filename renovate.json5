@@ -1,0 +1,33 @@
+// Renovate-Konfiguration (JSON5: Kommentare und abschließende Kommas sind erlaubt)
+// Ausgangslage des Trainings: noch OHNE Automerge.
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: ['config:recommended'],
+
+  // Nur diese Paket-Manager auswerten (u. a. keine GitHub-Actions-Updates)
+  enabledManagers: ['maven', 'dockerfile', 'gradle', 'gradle-wrapper'],
+
+  labels: ['dependencies'],
+
+  // Im Training alle PRs sofort anlegen, ohne Limits
+  prHourlyLimit: 0,
+  prConcurrentLimit: 0,
+
+  packageRules: [
+    {
+      // Maven-Updates kennzeichnen
+      matchManagers: ['maven'],
+      addLabels: ['maven'],
+    },
+    {
+      // Docker-Updates kennzeichnen
+      matchManagers: ['dockerfile'],
+      addLabels: ['docker'],
+    },
+    {
+      // Android-Updates (Gradle) kennzeichnen
+      matchManagers: ['gradle', 'gradle-wrapper'],
+      addLabels: ['android'],
+    },
+  ],
+}
