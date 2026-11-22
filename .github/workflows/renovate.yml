@@ -13,7 +13,7 @@ permissions:
   contents: write       # Branches pushen, mergen
   pull-requests: write  # PRs anlegen und aktualisieren
   issues: write         # Dependency Dashboard (Issue)
-  checks: read          # Status der Checks (Android-CI) lesen
+  checks: read          # Renovate liest den Status von Checks (z. B. für PR-Beschreibungen)
   statuses: read
 
 # Nie zwei Renovate-Läufe parallel auf demselben Repo

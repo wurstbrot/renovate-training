@@ -16,7 +16,12 @@
   // Teil 2: Schwachstellen über die Datenbank OSV.dev erkennen (z. B. Log4Shell)
   osvVulnerabilityAlerts: true,
   vulnerabilityAlerts: {
-    labels: ['security'],
+    labels: ['security', 'automerge'],
+    // Teil 3, Erweiterung: Notfallpatches – Sicherheits-Updates IMMER sofort automatisch
+    // mergen, auch Major und ohne Tests. Die Einstellungen hier werden von Renovate
+    // erzwungen und überschreiben daher auch die Major-Regel in packageRules.
+    automerge: true,
+    ignoreTests: true,
     // Neueste statt niedrigste Version mit Fix: log4j-api und log4j-core teilen sich
     // die Property log4j.version, haben laut OSV aber unterschiedliche Mindestversionen.
     vulnerabilityFixStrategy: 'highest',
@@ -50,6 +55,7 @@
     },
     {
       // Sicherheitsnetz: Major-Updates werden nie automatisch gemerged
+      // (gilt nicht für Sicherheits-Updates, siehe vulnerabilityAlerts)
       matchUpdateTypes: ['major'],
       automerge: false,
     },

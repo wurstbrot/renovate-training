@@ -14,7 +14,7 @@ Renovate läuft selbst gehostet über GitHub Actions. Es startet bei jedem Push 
 1. Renovate über GitHub Actions selbst hosten. Der Workflow startet bei jedem Push und funktioniert ohne Anpassung in jedem Fork.
 2. Verstehen, wie Renovate Updates in Pull Requests (PRs) aufteilt: nach Update-Typ (Major/Minor/Patch), nach Paket-Gruppen und nach gemeinsam genutzten Versions-Properties.
 3. Sicherheitslücken wie Log4Shell gezielt über Schwachstellen-Datenbanken schließen.
-4. **Automerge für das Java-Basis-Image einrichten.** Minor-, Patch- und Digest-Updates werden automatisch gemerged, **Major-Updates nicht**.
+4. **Automerge für das Java-Basis-Image und für Sicherheits-Updates einrichten.** Minor-, Patch- und Digest-Updates werden automatisch gemerged, **Major-Updates nicht**.
 5. Die Grenzen von Renovate erkennen. Beispiel: Die Android-SDK-Level `compileSdk`/`targetSdk` aktualisiert Renovate nicht.
 
 ## Aufbau des Repositorys
@@ -22,8 +22,7 @@ Renovate läuft selbst gehostet über GitHub Actions. Es startet bei jedem Push 
 ```text
 .
 ├── .github/workflows/
-│   ├── renovate.yml     # startet Renovate bei Push auf main (und manuell)
-│   └── android.yml      # Check "android-build": nur bei Änderungen unter android/
+│   └── renovate.yml     # startet Renovate bei Push auf main (und manuell)
 ├── Dockerfile           # Multi-Stage: Maven-Build + Java-Runtime-Image
 ├── pom.xml              # Java-17-Anwendung mit Log4j 2.14.1
 ├── src/                 # Minimale Java-Anwendung (loggt eine Benutzereingabe)
@@ -49,12 +48,10 @@ Renovate läuft selbst gehostet über GitHub Actions. Es startet bei jedem Push 
    Renovate braucht ein Token, um Branches zu pushen und PRs anzulegen. Der Workflow nimmt das Secret `RENOVATE_TOKEN`, wenn es existiert.
    Sonst verwendet er das `GITHUB_TOKEN`, das GitHub Actions automatisch bereitstellt. **Für das Training genügt das `GITHUB_TOKEN`.**
 
-   Ein eigenes Token ist nur bequemer. GitHub startet für Änderungen, die mit dem `GITHUB_TOKEN` gemacht wurden, keine weiteren Workflows automatisch (Schutz vor Endlosschleifen). Deshalb gilt:
+   Ein eigenes Token ist nur bequemer: GitHub startet für Änderungen, die mit dem `GITHUB_TOKEN` gemacht wurden, keine weiteren Workflows (Schutz vor Endlosschleifen).
+   Merged Renovate einen PR, startet danach also kein neuer Renovate-Lauf. Den stößt du bei Bedarf per *Run workflow* an.
 
-   - Die Android-CI (`android.yml`) auf Renovate-PRs musst du per „Approve and run workflows“ von Hand freigeben.
-   - Merged Renovate einen PR, startet danach kein neuer Renovate-Lauf. Den stößt du bei Bedarf per *Run workflow* an.
-
-   Wer beides automatisch haben möchte, legt ein eigenes Token an:
+   Wer das automatisch haben möchte, legt ein eigenes Token an:
 
    1. [Neues Token (classic) erstellen](https://github.com/settings/tokens/new).
    2. *Note:* `renovate-training`. *Expiration:* auf das Trainingsende setzen, z. B. 7 Tage.
@@ -177,25 +174,38 @@ Hinweise:
 
 Diskussion: Sollte das Build-Image `maven` ebenfalls automatisch gemerged werden? Was spricht dafür, was dagegen?
 
----
+### Erweiterung: Sicherheits-Updates als Notfallpatch automatisch mergen (ca. 15 Minuten)
 
-## Teil 4: Android – wenn ein Update die CI bricht (ca. 15 Minuten)
+Voraussetzung: Teil 2 ist umgesetzt (`osvVulnerabilityAlerts: true`).
 
-Die Android-PRs werden vom Check `android-build` (`.github/workflows/android.yml`) gebaut.
+Notfallpatches für bekannte Schwachstellen dürfen ohne Tests ausgerollt werden. Renovate soll sie deshalb **immer** sofort mergen.
 
-1. Welche Android-PRs werden grün, welche rot? Lies bei roten PRs das Build-Log.
-   - Ein Major-Update des Android Gradle Plugin benötigt in der Regel auch eine neuere Gradle-Version. Renovate legt beides aber als **getrennte** PRs an.
-   - Neuere AndroidX-Bibliotheken setzen oft ein höheres `compileSdk` voraus. Das alte SDK-Level kann also normale Updates blockieren.
-2. Wie würdest du AGP- und Gradle-Updates zusammenfassen? *Tipp:* `groupName` in einer `packageRule`.
-3. Erhöhe `compileSdk`/`targetSdk` manuell in einem eigenen PR und beobachte, welche Renovate-PRs danach grün werden.
-4. **Gradle-Wrapper und `allowedUnsafeExecutions`:** Öffne den PR für den Gradle-Wrapper und sieh dir `gradle-wrapper.properties` an.
-   Renovate aktualisiert dort `distributionUrl` **und** `distributionSha256Sum`. Für die Prüfsumme muss Renovate `./gradlew :wrapper` ausführen.
-   Das ist nur erlaubt, weil `renovate.yml` die Variable `RENOVATE_ALLOWED_UNSAFE_EXECUTIONS: '["gradleWrapper"]'` setzt.
-   - Entferne die Zeile testweise. Im Dependency Dashboard erscheint dann
-     `Gradle wrapper command was requested to run, but gradleWrapper is not permitted in the allowedUnsafeExecutions`.
-     Der Wrapper-PR enthält danach die neue Gradle-Version, aber die **alte** Prüfsumme. Gradle bricht dann mit einem Prüfsummenfehler ab, und `android-build` wird rot.
-   - Diskussion: Warum gilt das als „unsafe“? Der Gradle-Build-Code aus dem Repository läuft dabei im Renovate-Prozess, der das Token besitzt.
-     Warum lässt sich die Option nur global setzen (im Workflow) und nicht in `renovate.json5`?
+**Ziel:**
+
+- Alle Sicherheits-Updates (PR-Titel mit `[SECURITY]`) werden sofort automatisch gemerged, **auch Major-Updates** und ohne auf Tests zu warten.
+- Für normale Updates gilt weiterhin: Major wird nie automatisch gemerged.
+
+Hinweise:
+
+- [`vulnerabilityAlerts`](https://docs.renovatebot.com/configuration-options/#vulnerabilityalerts) nimmt dieselben Einstellungen wie eine `packageRule` auf, also auch `automerge` und `ignoreTests`.
+- Renovate wendet diese Einstellungen **erzwungen** an: Sie überschreiben jede `packageRule`, auch die Regel „Major nie automergen“. Genau das ist hier gewollt.
+
+**Prüfe das Ergebnis:**
+
+- [ ] Der PR `Update log4j.version … [SECURITY]` (Log4j 2.14.1 → 2.26.1, Minor) wurde automatisch gemerged.
+- [ ] Der PR `Update dependency com.squareup.okhttp3:okhttp to v5 [SECURITY]` (Major) wurde ebenfalls automatisch gemerged.
+- [ ] Der PR `eclipse-temurin` 17 → 25 (Major, kein Sicherheits-Update) ist weiterhin offen.
+
+Diskussion:
+
+- OkHttp springt von 3.12.0 auf 5.5.1 und damit über zwei Major-Versionen. Baut die Android-App danach noch?
+  Wer bemerkt es, wenn nicht? Wie sieht euer Prozess nach einem automatisch gemergten Notfallpatch aus?
+- Sicherheits-Updates ignorieren standardmäßig `minimumReleaseAge`. Zusammen mit `vulnerabilityFixStrategy: 'highest'` landet so auch ein
+  gerade erst veröffentlichtes Release sofort auf `main`. Wie hoch schätzt ihr das Risiko eines kompromittierten Releases ein?
+  Was würde `'lowest'` daran ändern, und warum funktioniert `'lowest'` bei Log4j hier nicht (siehe Teil 2)?
+- Alternative: Nur Minor/Patch-Sicherheits-Updates automatisch mergen, Major manuell. Das geht über eine `packageRule` mit
+  [`matchJsonata`](https://docs.renovatebot.com/configuration-options/#matchjsonata) `['isVulnerabilityAlert = true']` und
+  `matchUpdateTypes: ['minor', 'patch']` statt `automerge` unter `vulnerabilityAlerts`. Wann wäre das die bessere Wahl?
 
 ---
 
@@ -220,7 +230,8 @@ Um sie zu übernehmen, die Datei nach `renovate.json5` kopieren und auf `main` p
 | Renovate-Branches existieren, aber es gibt **keine PRs**. Im Dependency Dashboard stehen alle Updates unter „Errored“. | Renovate nutzt das `GITHUB_TOKEN`, und Actions dürfen keine PRs anlegen. „Allow GitHub Actions to create and approve pull requests“ aktivieren (Teil 0, Schritt 3) oder ein eigenes Token hinterlegen (Teil 0, Schritt 5). Danach *Run workflow* starten: Renovate legt die PRs für die vorhandenen Branches an. Im Job-Log (Log-Level `debug`) steht die genaue Ursache bei `Pull request creation error`. |
 | Kein Dependency Dashboard | Issues im Fork aktivieren (Teil 0, Schritt 4) |
 | Automerge passiert nicht, PR zeigt „Automerge: Enabled“ | `"ignoreTests": true` fehlt in der Automerge-Regel. Renovate wartet dann auf grüne Checks, die es für Docker-PRs hier nicht gibt. |
-| Warnung `gradleWrapper is not permitted in the allowedUnsafeExecutions` im Dependency Dashboard | In `renovate.yml` fehlt `RENOVATE_ALLOWED_UNSAFE_EXECUTIONS: '["gradleWrapper"]'`. Ohne diese Variable hat der Wrapper-PR eine falsche Prüfsumme (siehe Teil 4, Aufgabe 4). |
+| Warnung `gradleWrapper is not permitted in the allowedUnsafeExecutions` im Dependency Dashboard | In `renovate.yml` fehlt `RENOVATE_ALLOWED_UNSAFE_EXECUTIONS: '["gradleWrapper"]'`. Ohne diese Variable aktualisiert Renovate im Wrapper-PR zwar die Gradle-Version, aber nicht die `distributionSha256Sum`. Gradle bricht dann mit einem Prüfsummenfehler ab. |
+| PR wird trotz „Automerge: Enabled“ nicht gemerged, Dependency Dashboard zeigt ihn unter „PR Edited (Blocked)“ | Der Branch enthält Commits, die nicht von Renovate stammen, z. B. nach einem Force-Push auf `main`. Renovate fasst den PR dann nicht mehr an. Im Dashboard die Checkbox des PRs anhaken („discard all commits and start over“) und *Run workflow* starten. |
 | PR wird nicht aktualisiert, obwohl `main` sich geändert hat | Renovate rebased erst beim nächsten Lauf. *Run workflow* starten oder im PR die Checkbox „rebase/retry“ setzen und erneut laufen lassen |
 
 ## Hinweise für Trainer
