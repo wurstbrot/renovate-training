@@ -17,7 +17,7 @@
       ABSICHTLICH VERALTET: Log4j 2.14.1 ist für Log4Shell (CVE-2021-44228) anfällig.
       Beide Log4j-Artefakte nutzen dieselbe Property – Renovate aktualisiert sie gemeinsam.
     -->
-    <log4j.version>2.14.1</log4j.version>
+    <log4j.version>2.26.1</log4j.version>
   </properties>
 
   <dependencies>
