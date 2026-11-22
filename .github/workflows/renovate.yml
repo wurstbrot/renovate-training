@@ -1,0 +1,43 @@
+name: Renovate
+
+# Renovate läuft bei jedem Push auf main – im Original-Repo genauso wie in jedem Fork.
+# Über "Run workflow" kann ein Lauf zusätzlich manuell gestartet werden
+# (z. B. damit Renovate einen PR mit grüner CI automatisch merged).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Rechte für GITHUB_TOKEN (falls kein eigenes RENOVATE_TOKEN hinterlegt ist)
+permissions:
+  contents: write       # Branches pushen, mergen
+  pull-requests: write  # PRs anlegen und aktualisieren
+  issues: write         # Dependency Dashboard (Issue)
+  checks: read          # Status der CI für Automerge lesen
+  statuses: read
+
+# Nie zwei Renovate-Läufe parallel auf demselben Repo
+concurrency:
+  group: renovate-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Self-hosted Renovate
+        uses: renovatebot/github-action@v46.3.14
+        with:
+          # Bevorzugt ein Personal Access Token (Secret RENOVATE_TOKEN),
+          # sonst das automatisch vorhandene GITHUB_TOKEN.
+          token: ${{ secrets.RENOVATE_TOKEN || secrets.GITHUB_TOKEN }}
+        env:
+          # Immer genau das Repo, in dem der Workflow läuft -> funktioniert im Fork ohne Anpassung
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          # Forks explizit verarbeiten
+          RENOVATE_FORK_PROCESSING: enabled
+          # renovate.json liegt bereits im Repo -> kein Onboarding-PR
+          RENOVATE_ONBOARDING: "false"
+          RENOVATE_REQUIRE_CONFIG: required
+          LOG_LEVEL: debug

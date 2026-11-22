@@ -1,0 +1,25 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["maven", "dockerfile", "gradle", "gradle-wrapper"],
+  "labels": ["dependencies"],
+  "prHourlyLimit": 0,
+  "prConcurrentLimit": 0,
+  "packageRules": [
+    {
+      "description": "Maven-Updates kennzeichnen",
+      "matchManagers": ["maven"],
+      "addLabels": ["maven"]
+    },
+    {
+      "description": "Docker-Updates kennzeichnen",
+      "matchManagers": ["dockerfile"],
+      "addLabels": ["docker"]
+    },
+    {
+      "description": "Android-Updates (Gradle) kennzeichnen",
+      "matchManagers": ["gradle", "gradle-wrapper"],
+      "addLabels": ["android"]
+    }
+  ]
+}
