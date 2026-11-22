@@ -223,3 +223,4 @@ Um sie zu übernehmen, die Datei nach `renovate.json` kopieren und auf `main` pu
 - Die erwarteten Versionen in Teil 1 stammen aus einem lokalen Probelauf (`renovate --platform=local --dry-run=lookup`, Renovate 44.257.9) vom 22.11.2026.
   Neuere Releases ändern die Zielversionen, aber nicht die Struktur der Übungen.
 - Die Java-Anwendung nutzt Log4Shell **nicht** aus. Sie zeigt nur das verwundbare Muster (Benutzereingabe im Log).
+
