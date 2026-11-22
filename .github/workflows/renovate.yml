@@ -40,4 +40,10 @@ jobs:
           # renovate.json liegt bereits im Repo -> kein Onboarding-PR
           RENOVATE_ONBOARDING: "false"
           RENOVATE_REQUIRE_CONFIG: required
+          # Erlaubt Renovate, bei Gradle-Wrapper-Updates "./gradlew :wrapper" auszuführen.
+          # Nur so wird die distributionSha256Sum in gradle-wrapper.properties mit aktualisiert;
+          # ohne die Freigabe hätte der PR die neue Gradle-Version, aber die alte Prüfsumme.
+          # "Unsafe", weil dabei Build-Code aus dem Repository mit dem Renovate-Token läuft –
+          # nur für vertrauenswürdige Repositories freigeben.
+          RENOVATE_ALLOWED_UNSAFE_EXECUTIONS: '["gradleWrapper"]'
           LOG_LEVEL: debug

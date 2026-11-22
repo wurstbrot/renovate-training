@@ -180,6 +180,14 @@ Die Android-PRs werden vom Check `android-build` (`.github/workflows/android.yml
    - Neuere AndroidX-Bibliotheken setzen oft ein höheres `compileSdk` voraus. Das alte SDK-Level kann also normale Updates blockieren.
 2. Wie würdest du AGP- und Gradle-Updates zusammenfassen? *Tipp:* `groupName` in einer `packageRule`.
 3. Erhöhe `compileSdk`/`targetSdk` manuell in einem eigenen PR und beobachte, welche Renovate-PRs danach grün werden.
+4. **Gradle-Wrapper und `allowedUnsafeExecutions`:** Öffne den PR für den Gradle-Wrapper und sieh dir `gradle-wrapper.properties` an.
+   Renovate aktualisiert dort `distributionUrl` **und** `distributionSha256Sum`. Für die Prüfsumme muss Renovate `./gradlew :wrapper` ausführen.
+   Das ist nur erlaubt, weil `renovate.yml` die Variable `RENOVATE_ALLOWED_UNSAFE_EXECUTIONS: '["gradleWrapper"]'` setzt.
+   - Entferne die Zeile testweise. Im Dependency Dashboard erscheint dann
+     `Gradle wrapper command was requested to run, but gradleWrapper is not permitted in the allowedUnsafeExecutions`.
+     Der Wrapper-PR enthält danach die neue Gradle-Version, aber die **alte** Prüfsumme. Gradle bricht dann mit einem Prüfsummenfehler ab, und `android-build` wird rot.
+   - Diskussion: Warum gilt das als „unsafe“? Der Gradle-Build-Code aus dem Repository läuft dabei im Renovate-Prozess, der das Token besitzt.
+     Warum lässt sich die Option nur global setzen (im Workflow) und nicht in `renovate.json`?
 
 ---
 
@@ -204,6 +212,7 @@ Um sie zu übernehmen, die Datei nach `renovate.json` kopieren und auf `main` pu
 | `Resource not accessible by integration` beim Anlegen von PRs | „Allow GitHub Actions to create and approve pull requests“ aktivieren (Teil 0, Schritt 3) |
 | Kein Dependency Dashboard | Issues im Fork aktivieren (Teil 0, Schritt 4) |
 | Automerge passiert nicht | CI auf dem PR nicht gelaufen (Variante A: freigeben), CI rot, oder es gab danach keinen weiteren Renovate-Lauf bzw. „Allow auto-merge“ fehlt |
+| Warnung `gradleWrapper is not permitted in the allowedUnsafeExecutions` im Dependency Dashboard | In `renovate.yml` fehlt `RENOVATE_ALLOWED_UNSAFE_EXECUTIONS: '["gradleWrapper"]'`. Ohne diese Variable hat der Wrapper-PR eine falsche Prüfsumme (siehe Teil 4, Aufgabe 4). |
 | PR wird nicht aktualisiert, obwohl `main` sich geändert hat | Renovate rebased erst beim nächsten Lauf. *Run workflow* starten oder im PR die Checkbox „rebase/retry“ setzen und erneut laufen lassen |
 
 ## Hinweise für Trainer
