@@ -2,7 +2,7 @@
 # ABSICHTLICH VERALTET (Stand der Trainingsvorlage).
 [versions]
 # Android Gradle Plugin = Build-Werkzeug des Android SDK
-agp = "7.4.2"
+agp = "9.5.2"
 appcompat = "1.6.1"
 # OkHttp 3.12.0 ist von CVE-2021-0341 betroffen (falsches Zertifikat kann akzeptiert werden)
 okhttp = "3.12.0"
